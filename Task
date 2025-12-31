@@ -1,0 +1,5 @@
+small pilot (MSFT only) to prove correctness before scaling
+Calculate the 200-week MA, confirm it’s rising, and show distance% from price.
+• Generate alerts at 5%, 4%, 3%, 2%, 1%, and touch.
+• Backtest your scale-in entries and stop (weekly close below 200WMA), and produce win/stop-out stats with a CSV + chart.
+Once you validate the MSFT results visually and via the CSV, I’ll extend to more tickers and then full indices/commodities.
