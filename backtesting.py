@@ -447,6 +447,38 @@ def run(symbol: str, start: str, csv: Optional[str], out_dir: str, week_ending: 
         print(f"Plot: {plot_path}")
 
 
+def run_in_memory(symbol: str, start: str, csv: Optional[str] = None, week_ending: str = "W-FRI",
+                  ma_type: Literal["sma", "wma"] = "sma",
+                  exit_mode: Literal["none", "profit", "trail"] = "none",
+                  profit_target_pct: float = 0.15) -> tuple:
+    """Run backtest and return DataFrames directly (no file I/O).
+    
+    Returns:
+        tuple: (events_df, instances_df) - both pandas DataFrames
+    """
+    daily = load_daily(symbol, start=start, csv_path=csv)
+    weekly = to_weekly(daily, week_ending=week_ending)
+    weekly = add_ma200w(weekly, ma_type=ma_type)
+    weekly = compute_events(weekly)
+
+    # Drop periods before we have 200W data
+    weekly = weekly.dropna(subset=["MA200W", "MA200W_prev"]).copy()
+    if weekly.empty:
+        raise RuntimeError(f"Not enough data to compute 200-week MA for {symbol}.")
+
+    instances = backtest_trades(symbol, weekly, exit_mode=exit_mode, profit_target_pct=profit_target_pct)
+
+    # Prepare events DataFrame (same columns as CSV output)
+    events_df = weekly[[
+        "Open", "High", "Low", "Close", "Volume", "MA200W", "rising", "from_above",
+        "evt_5pct", "evt_4pct", "evt_3pct", "evt_2pct", "evt_1pct", "evt_touch", "setup_start"
+    ]].copy()
+    events_df = events_df.reset_index().rename(columns={"index": "Date"})
+    events_df["symbol"] = symbol
+
+    return events_df, instances
+
+
 def live_check(symbol: str, start: str, week_ending: str = "W-FRI", ma_type: Literal["sma", "wma"] = "sma") -> None:
     """Print a quick proximity status vs 200W MA using latest price.
 
